@@ -6,10 +6,13 @@
 import serial
 import socket
 import time
-
+class AttenuateurSerialException(Exception):
+    pass
+class AttenuateurNetworkException(Exception):
+    pass
 class Attenuateur :
     def __init__(self):
-        self.ser=None
+        self.ser = None
         self.sock = None
 
     def connexion_serial(self, COM):
@@ -25,12 +28,13 @@ class Attenuateur :
             self.ser.open()
         except:
             self.ser = None
+            raise AttenuateurSerialException
 
 
     def connexion_network(self, ip, port=10001):
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # TCP with STREAM
-            print("IP: ", ip,", Port: ",port)
+            print("IP: ", ip, ", Port: ", port)
             self.sock.connect((ip, port))
             time.sleep(.1)
             self.sock.send("IDN?\n".encode('ascii'))
@@ -38,15 +42,26 @@ class Attenuateur :
             print('Name: ', name.decode('ascii'))
         except:
             self.sock=None
+            raise AttenuateurNetworkException
 
 
     def set_value(self,value):
+        if value <0 or value > 935:
+            raise ValueError
+
         value10 = 'ATT 0 {:03n}\n'.format(value * 10)
+
         if self.ser != None:
-            self.ser.write(value10.encode())
+            try:
+                self.ser.write(value10.encode())
+            except:
+                raise AttenuateurSerialException
 
         if self.sock != None:
-            self.sock.send(value10.encode())
+            try:
+                self.sock.send(value10.encode())
+            except:
+                raise AttenuateurNetworkException
 
 
     def close(self):
